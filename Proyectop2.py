@@ -161,6 +161,7 @@ def Ver(oracion, valores_asignados):
     print("Resultado final:", resultado)
     return resultado
 
+# Función para construir el árbol binario
 def construir_arbol(variables):
     if not variables:
         return None
@@ -210,16 +211,19 @@ def construir_arbol_global(reglas):
 
     return raiz
 
-def dibujar_arbol(nodo, x=0, y=0, dx=1.5, dy=1, ax=None, nivel=0, max_nivel=5, nombre_archivo="arbol_binario.png"):
+# Función para dibujar el árbol binario y guardarlo como imagen
+def dibujar_arbol(nodo, x=0, y=0, dx=1.5, dy=1, ax=None, nivel=0, max_nivel=5):
     if nodo is None or nivel > max_nivel:
         return
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.axis('off')
+        ax.axis('off')  # Desactivar los ejes
 
+    # Dibujar el valor del nodo
     ax.text(x, y, nodo.valor, ha='center', va='center', bbox=dict(boxstyle="round,pad=0.3", fc="lightblue", ec="black", lw=1))
 
+    # Dibujar las conexiones entre nodos
     if nodo.izquierda:
         ax.plot([x, x - dx], [y, y - dy], 'k-')
         dibujar_arbol(nodo.izquierda, x - dx, y - dy, dx * 0.6, dy, ax, nivel + 1, max_nivel)
@@ -228,21 +232,30 @@ def dibujar_arbol(nodo, x=0, y=0, dx=1.5, dy=1, ax=None, nivel=0, max_nivel=5, n
         ax.plot([x, x + dx], [y, y - dy], 'k-')
         dibujar_arbol(nodo.derecha, x + dx, y - dy, dx * 0.6, dy, ax, nivel + 1, max_nivel)
 
+    # Guardar el gráfico como imagen al finalizar
     if nivel == 0:
-        plt.savefig(nombre_archivo, format='png')  # Guardar la imagen en el archivo
-        print(f"Árbol binario guardado como '{nombre_archivo}'")
-        plt.close(fig)  # Cerrar la figura para liberar memoria
+        # Guardar la imagen en un archivo, por ejemplo "arbol_binario.png"
+        plt.savefig("arbol_binario.png", format="png", bbox_inches="tight")
+        print("El árbol binario se ha guardado como 'arbol_binario.png'.")
+        plt.close(fig)  # Cerrar la figura después de guardarla
 
-def Arbol_binario(oracion, nombre_archivo="arbol_binario.png"):
+
+# Función principal para generar y guardar el árbol binario a partir de una fórmula
+def Arbol_binario(oracion):
     formula, _ = Formula(oracion)
     variables = sorted(set(re.findall(r'X\d+', Unir(formula))))
+
     variables_asignadas = {var: False for var in variables}
     
-    print(f"Dibujando árbol binario para la fórmula: {Unir(formula)}")
+    print(f"Generando el árbol binario para la fórmula: {Unir(formula)}")
+    
+    # Construir el árbol
     raiz = construir_arbol(variables_asignadas)
-    dibujar_arbol(raiz, nombre_archivo=nombre_archivo)
+    
+    # Dibujar y guardar el árbol binario como imagen
+    dibujar_arbol(raiz)
 
-def Arbol_binario_global(nombre_archivo="arbol_binario_global.png"):
+def Arbol_binario_global():
     reglas_texto = Cargar()
     if reglas_texto:
         reglas = [linea.strip()[:-1] for linea in reglas_texto.splitlines() if linea.strip()]  # Quitar el punto final
@@ -251,65 +264,122 @@ def Arbol_binario_global(nombre_archivo="arbol_binario_global.png"):
             print(f"Regla: {regla}")
 
         raiz_global = construir_arbol_global(reglas)
-        dibujar_arbol(raiz_global, nombre_archivo=nombre_archivo)
+        dibujar_arbol(raiz_global)
     else:
         print("No hay reglas cargadas para construir el árbol.")
+def Horn():
+    # Cargar las reglas desde el archivo
+    reglas_texto = Cargar()
+    if reglas_texto:
+        reglas = [linea.strip()[:-1] for linea in reglas_texto.splitlines() if linea.strip()]  # Quitar el punto final
+        clausulas_horn = []
 
-def menu():
-    print("\n--- Menú ---")
-    print("1. Crear fórmula")
-    print("2. Crear tabla de átomos")
-    print("3. Crear tabla booleana")
-    print("4. Guardar fórmula en base de reglas")
-    print("5. Cargar base de reglas")
-    print("6. Asignar valores de verdad")
-    print("7. Evaluar fórmula con valores asignados")
-    print("8. Dibujar árbol binario de una fórmula")
-    print("9. Dibujar árbol binario global")
-    print("0. Salir")
-    return input("Seleccione una opción: ")
+        for regla in reglas:
+            # Reemplazar todos los ∧ por ∨
+            regla = regla.replace('∧', '∨')
+            
+            # Separar los literales en la regla
+            literales = regla.split("∨")
+            # Negar todos los literales excepto el último, y no negar si ya está negado
+            clausula_horn = []
+            for literal in literales[:-1]:
+                literal = literal.strip()
+                # Verificar si ya está negado
+                if not literal.startswith('¬'):
+                    clausula_horn.append(f"¬{literal}")
+                else:
+                    clausula_horn.append(literal)  # Mantener el literal ya negado
 
+            # Agregar el último literal sin negación
+            ultimo_literal = literales[-1].strip()
+            if ultimo_literal.startswith('¬'):
+                # Si el último literal está negado, lo quitamos
+                clausula_horn.append(ultimo_literal[1:])  # Quitar la negación
+            else:
+                clausula_horn.append(ultimo_literal)
+
+            # Unir la cláusula en una cadena
+            clausulas_horn.append("∨".join(clausula_horn))
+
+        # Guardar las cláusulas de Horn en un nuevo archivo
+        with open("Clausulas_Horn.txt", 'w', encoding='utf-8') as archivo:
+            for clausula in clausulas_horn:
+                archivo.write(clausula + ".\n")
+        print("Cláusulas de Horn guardadas en Clausulas_Horn.txt.")
+    else:
+        print("No hay reglas cargadas para convertir a cláusulas de Horn.")
+
+
+def Menu():
+    print("\n" + "=" * 60)
+    print("        MENÚ PRINCIPAL")
+    print("=" * 60)
+    print("🔹 " + "1.   Introducir una fórmula.")
+    print("🔹 " + "2.   Mostrar tabla de átomos.")
+    print("🔹 " + "3.   Mostrar tabla de verdad.")
+    print("🔹 " + "4.   Guardar regla.")
+    print("🔹 " + "5.   Cargar regla.")
+    print("🔹 " + "6.   Asignar valores de verdad.")
+    print("🔹 " + "7.   Ver resultados.")
+    print("🔹 " + "8.   Dibujar árbol binario.")
+    print("🔹 " + "9.   Dibujar árbol binario global.")
+    print("🔹 " + "10.  Convertir las reglas a cláusulas de Horn")
+    print("🔹 " + "11.  Salir.")
+    print("═" * 60)
+    opcion = input("Elija una opción: ")
+    return opcion
+
+
+cont=0
 while True:
-    opcion = menu()
-
-    if opcion == '1':
-        oracion = input("Ingrese la fórmula en español: ")
+    opcion = Menu()
+    
+    if opcion == "1":
+        oracion = input("Ingresa la frase \n")
         formula, frase = Formula(oracion)
-        print("Fórmula convertida:", Unir(formula))
-    elif opcion == '2':
-        oracion = input("Ingrese la fórmula en español: ")
-        formula, frase = Formula(oracion)
-        Tabla_Atomos(formula, frase)
-    elif opcion == '3':
-        oracion = input("Ingrese la fórmula en español: ")
-        formula, frase = Formula(oracion)
-        Tabla_Booleana(formula)
-    elif opcion == '4':
-        oracion = input("Ingrese la fórmula en español: ")
-        formula, frase = Formula(oracion)
-        Guardar(formula)
-    elif opcion == '5':
-        reglas = Cargar()
-        if reglas:
-            print("Base de reglas cargada:")
-            print(reglas)
+        formula = Unir(formula)
+        cont += 1
+        print('El resultado es: ', formula + '\n')
+    elif opcion == "2":
+        if cont > 0:
+            Tabla_Atomos(formula, frase)
         else:
-            print("No se encontraron reglas guardadas.")
-    elif opcion == '6':
-        oracion = input("Ingrese la fórmula en español: ")
-        valores_asignados = Asignar(oracion)
-    elif opcion == '7':
-        oracion = input("Ingrese la fórmula en español: ")
-        Ver(oracion, valores_asignados)
-    elif opcion == '8':
-        oracion = input("Ingrese la fórmula en español: ")
-        nombre_archivo = input("Ingrese el nombre del archivo para guardar el árbol binario (ej. arbol_binario.png): ")
-        Arbol_binario(oracion, nombre_archivo=nombre_archivo)
-    elif opcion == '9':
-        nombre_archivo = input("Ingrese el nombre del archivo para guardar el árbol binario global (ej. arbol_binario_global.png): ")
-        Arbol_binario_global(nombre_archivo=nombre_archivo)
-    elif opcion == '0':
-        print("Saliendo del programa.")
+            print('Crea una fórmula antes')
+    elif opcion == "3":
+        if cont > 0:
+            Tabla_Booleana(formula)
+        else:
+            print('Crea una fórmula antes')
+    elif opcion == "4":
+        if cont > 0:
+            Guardar(formula)
+        else:
+            print('Crea una fórmula antes')
+    elif opcion == "5":
+        BD = Cargar()
+        print('El resultado es: \n', BD)
+    elif opcion == "6":
+        if cont>0:
+            valores_asignados= Asignar(formula)
+        else:
+            print('Crea una fórmula antes')
+    elif opcion == "7":
+        if valores_asignados:
+            Ver(oracion, valores_asignados)
+        else:
+                print('Asigna valores primero.')
+    elif opcion == "8":
+        if cont > 0:
+            Arbol_binario(oracion)
+                
+        else:print('Crea una fórmula antes')
+        
+    elif opcion == "9":
+        Arbol_binario_global()
+    elif opcion == "10":
+        Horn()
+    elif opcion == "11":
+        print("adios")
         break
     else:
-        print("Opción inválida. Intente de nuevo.")
+        print("Opción inválida. Por favor, elija una opción válida.")
